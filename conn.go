@@ -120,14 +120,14 @@ func (l *LDAPConnection) Connect() error {
 			l.conn = c
 		}
 	}
-	l.start()
-	l.connected = true
 	if l.IsTLS {
 		err := l.startTLS()
 		if err != nil {
 			return err
 		}
 	}
+	l.start()
+	l.connected = true
 	return nil
 }
 
@@ -180,10 +180,7 @@ func (l *LDAPConnection) nextMessageID() (messageID uint64, ok bool) {
 
 // StartTLS sends the command to start a TLS session and then creates a new TLS Client
 func (l *LDAPConnection) startTLS() error {
-	messageID, ok := l.nextMessageID()
-	if !ok {
-		return NewLDAPError(ErrorClosing, "MessageID channel is closed.")
-	}
+	messageID := uint64(1)
 
 	if l.IsSSL {
 		return NewLDAPError(ErrorNetwork, "Already encrypted")
@@ -196,9 +193,16 @@ func (l *LDAPConnection) startTLS() error {
 		return err
 	}
 
-	err = l.sendReqRespPacket(messageID, packet)
+	_, err = l.conn.Write(packet.Bytes())
 	if err != nil {
 		return err
+	}
+	p, err := ber.ReadPacket(l.conn)
+	addLDAPDescriptions(p)
+	result_code, result_description := getLDAPResultCode(p)
+
+	if result_code != 0 {
+		return NewLDAPError(result_code, result_description)
 	}
 
 	conn := tls.Client(l.conn, l.TlsConfig)
@@ -281,7 +285,7 @@ func (l *LDAPConnection) processMessages() {
 		// will shutdown reader.
 		l.conn.Close()
 	}()
-	var message_id uint64 = 1
+	var message_id uint64 = 2 // Reserve '1' for startTLS
 	var message_packet *messagePacket
 
 	for {
