@@ -8,6 +8,8 @@ package ldap
 import (
 	"crypto/tls"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
+	stackerr "github.com/go-errors/errors"
 	"github.com/mavricknz/asn1-ber"
 	"net"
 	"os"
@@ -156,8 +158,12 @@ func NewLDAPSSLConnection(server string, port uint16, tlsConfig *tls.Config) *LD
 }
 
 func (l *LDAPConnection) start() {
-	go l.reader()
-	go l.processMessages()
+	Go(func() {
+		l.reader()
+	})
+	Go(func() {
+		l.processMessages()
+	})
 }
 
 // Close closes the connection.
@@ -408,5 +414,21 @@ func (l *LDAPConnection) sendProcessMessage(message *messagePacket) {
 		if l.connected {
 			l.chanProcessMessage <- message
 		}
+	}()
+}
+
+// RecoverWithStack is the defer function to recover from panic and print stack
+func RecoverWithStack() {
+	if err := recover(); err != nil {
+		log.Error(err)
+		log.Error(stackerr.Wrap(err, 2).ErrorStack())
+	}
+}
+
+// Go - run a function on a go routine with defer that prints logs
+func Go(f func()) {
+	go func() {
+		defer RecoverWithStack()
+		f()
 	}()
 }
