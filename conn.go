@@ -8,6 +8,7 @@ package ldap
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/demisto/server/util"
 	"github.com/mavricknz/asn1-ber"
 	"net"
 	"os"
@@ -156,8 +157,12 @@ func NewLDAPSSLConnection(server string, port uint16, tlsConfig *tls.Config) *LD
 }
 
 func (l *LDAPConnection) start() {
-	go l.reader()
-	go l.processMessages()
+	util.Go(func() {
+		l.reader()
+	})
+	util.Go(func() {
+		l.processMessages()
+	})
 }
 
 // Close closes the connection.
