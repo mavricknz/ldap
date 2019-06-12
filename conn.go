@@ -370,6 +370,15 @@ func (l *LDAPConnection) reader() {
 
 		addLDAPDescriptions(p)
 
+		if len(p.Children) < 1 {
+			errorMessage := "ldap.reader: Incorrect protocol detected."
+			if strData := p.Data.String(); strData != "<nil>" {
+				errorMessage += " Packet data: " + strData
+			}
+			log.Errorln(errorMessage)
+			return
+		}
+
 		message_id := p.Children[0].Value.(uint64)
 		message_packet := &messagePacket{Op: MessageResponse, MessageID: message_id, Packet: p}
 
