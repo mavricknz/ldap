@@ -237,8 +237,6 @@ func (l *LDAPConnection) processMessages() {
 		l.closeLock.Lock()
 		defer l.closeLock.Unlock()
 		l.connected = false
-		// will shutdown reader.
-		l.conn.Close()
 	}()
 	var message_id uint64 = 1
 	var message_packet *messagePacket
@@ -253,6 +251,8 @@ func (l *LDAPConnection) processMessages() {
 				if l.Debug {
 					fmt.Printf("Shutting down\n")
 				}
+				// will shutdown reader.
+				l.conn.Close()
 				return
 			case MessageRequest:
 				// Add to message list and write to network
